@@ -139,33 +139,56 @@ class ObjectDetector:
         self.interpreter.set_tensor(self.input_details[0]["index"], input_tensor)
         self.interpreter.invoke()
 
-        boxes = self.interpreter.get_tensor(self.output_details[0]["index"])[0]
-        classes = self.interpreter.get_tensor(self.output_details[1]["index"])[0]
-        scores = self.interpreter.get_tensor(self.output_details[2]["index"])[0]
-        num = int(self.interpreter.get_tensor(self.output_details[3]["index"])[0])
-
+        num_outputs = len(self.output_details)
         detections: List[Detection] = []
-        for i in range(num):
-            confidence = float(scores[i])
-            if confidence < self.confidence_threshold:
-                continue
 
-            class_idx = int(classes[i])
-            label = self._label_for_tflite_class(class_idx)
+        if num_outputs >= 4:
+            # Standard SSD detection model: boxes, classes, scores, num_detections
+            boxes = self.interpreter.get_tensor(self.output_details[0]["index"])[0]
+            classes = self.interpreter.get_tensor(self.output_details[1]["index"])[0]
+            scores = self.interpreter.get_tensor(self.output_details[2]["index"])[0]
+            num = int(self.interpreter.get_tensor(self.output_details[3]["index"])[0])
 
-            ymin, xmin, ymax, xmax = boxes[i]
-            x1 = max(0, min(w - 1, int(xmin * w)))
-            y1 = max(0, min(h - 1, int(ymin * h)))
-            x2 = max(0, min(w - 1, int(xmax * w)))
-            y2 = max(0, min(h - 1, int(ymax * h)))
+            for i in range(num):
+                confidence = float(scores[i])
+                if confidence < self.confidence_threshold:
+                    continue
+                class_idx = int(classes[i])
+                label = self._label_for_tflite_class(class_idx)
+                ymin, xmin, ymax, xmax = boxes[i]
+                x1 = max(0, min(w - 1, int(xmin * w)))
+                y1 = max(0, min(h - 1, int(ymin * h)))
+                x2 = max(0, min(w - 1, int(xmax * w)))
+                y2 = max(0, min(h - 1, int(ymax * h)))
+                detections.append(Detection(label=label, confidence=confidence, bbox=(x1, y1, x2, y2)))
 
-            detections.append(
-                Detection(
-                    label=label,
-                    confidence=confidence,
-                    bbox=(x1, y1, x2, y2),
-                )
-            )
+        elif num_outputs == 1:
+            # Single-output classification model (e.g. MobileNet classifier)
+            output = self.interpreter.get_tensor(self.output_details[0]["index"])[0]
+            if output.ndim == 1:
+                # Classification output: array of scores per class
+                top_idx = int(np.argmax(output))
+                confidence = float(output[top_idx])
+                if self.is_float_input:
+                    pass  # Already 0-1
+                elif confidence > 1.0:
+                    confidence = confidence / 255.0
+                if confidence >= self.confidence_threshold:
+                    label = self._label_for_tflite_class(top_idx)
+                    detections.append(Detection(label=label, confidence=confidence, bbox=(0, 0, w, h)))
+
+        else:
+            # Unknown format — try to extract what we can
+            print(f"[OBJECT] Warning: TFLite model has {num_outputs} outputs, expected 4 (SSD) or 1 (classifier)")
+            try:
+                output = self.interpreter.get_tensor(self.output_details[0]["index"])[0]
+                top_idx = int(np.argmax(output))
+                confidence = float(output[top_idx])
+                if confidence >= self.confidence_threshold:
+                    label = self._label_for_tflite_class(top_idx)
+                    detections.append(Detection(label=label, confidence=confidence, bbox=(0, 0, w, h)))
+            except Exception as exc:
+                print(f"[OBJECT] Could not parse model output: {exc}")
 
         return detections
 

@@ -79,7 +79,7 @@ SNAPSHOT_DIR = PROJECT_ROOT / 'snapshots'
 
 # ── Config ────────────────────────────────────────────────────────────────────
 IMG_SIZE          = 224
-CONF_THRESHOLD    = 0.45
+CONF_THRESHOLD    = 0.75
 SMOOTH_FRAMES     = 5
 SPEECH_COOLDOWN   = 3.0
 DEFAULT_TTS_VOICE = "en-IN-NeerjaNeural"   # Indian English female
