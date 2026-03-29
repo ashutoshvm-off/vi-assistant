@@ -1,34 +1,26 @@
 """
 Shared camera utility for Smart Vision.
 
-Provides a unified camera interface that works on both desktop (OpenCV)
-and Raspberry Pi (rpicam-vid subprocess, since libcamera Python bindings
-are not available in pyenv-based venvs).
-
-Usage:
-    from camera_utils import open_camera
-    cap = open_camera(index=0, width=640, height=480, fps=30)
-    ret, frame = cap.read()
-    cap.release()
+On Raspberry Pi: reads pre-captured frames from /dev/shm/smartvision_frame.jpg
+written by camera_server.py (must be started before modules).
+On desktop: uses cv2.VideoCapture directly.
 """
 
 from __future__ import annotations
 
-import io
 import os
-import platform
 import shutil
-import subprocess
-import threading
 import time
 from typing import Optional, Tuple
 
 import cv2
 import numpy as np
 
+SHARED_FRAME_PATH = "/dev/shm/smartvision_frame.jpg"
+PID_FILE = "/dev/shm/smartvision_camera.pid"
+
 
 def _is_raspberry_pi() -> bool:
-    """Detect if running on a Raspberry Pi."""
     try:
         with open("/proc/device-tree/model", "r") as f:
             return "raspberry pi" in f.read().lower()
@@ -36,123 +28,63 @@ def _is_raspberry_pi() -> bool:
         return False
 
 
-def _rpicam_available() -> bool:
-    """Check if rpicam-vid CLI is available."""
-    return shutil.which("rpicam-vid") is not None
+def _camera_server_running() -> bool:
+    """Check if camera_server.py is running."""
+    try:
+        with open(PID_FILE, "r") as f:
+            pid = int(f.read().strip())
+        os.kill(pid, 0)
+        return True
+    except (FileNotFoundError, ValueError, ProcessLookupError, PermissionError):
+        return False
 
 
-class PiCameraCapture:
+class SharedFrameReader:
     """
-    OpenCV-compatible camera capture using rpicam-vid subprocess.
-
-    Streams MJPEG from rpicam-vid and decodes frames with OpenCV.
-    Provides the same interface as cv2.VideoCapture:
-        - isOpened()
-        - read() -> (bool, frame)
-        - release()
-        - set(prop, val)  (no-op, resolution set at init)
+    Reads frames from /dev/shm/smartvision_frame.jpg written by camera_server.py.
+    Same interface as cv2.VideoCapture.
     """
 
-    def __init__(self, width: int = 640, height: int = 480, fps: int = 30):
+    def __init__(self, width: int = 640, height: int = 480):
         self._width = width
         self._height = height
-        self._fps = fps
-        self._proc: Optional[subprocess.Popen] = None
-        self._frame: Optional[np.ndarray] = None
-        self._lock = threading.Lock()
         self._running = False
-        self._reader_thread: Optional[threading.Thread] = None
 
-        self._start()
-
-    def _start(self) -> None:
-        """Start rpicam-vid subprocess and frame reader thread."""
-        cmd = [
-            "rpicam-vid",
-            "-t", "0",                  # run indefinitely
-            "--width", str(self._width),
-            "--height", str(self._height),
-            "--framerate", str(self._fps),
-            "--codec", "mjpeg",
-            "--inline",
-            "-n",                       # no preview window
-            "-o", "-",                  # output to stdout
-        ]
-
-        try:
-            self._proc = subprocess.Popen(
-                cmd,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-            )
-            self._running = True
-            self._reader_thread = threading.Thread(
-                target=self._read_frames, daemon=True
-            )
-            self._reader_thread.start()
-            # Give the camera a moment to warm up
-            time.sleep(1.0)
-        except Exception as exc:
-            print(f"[camera_utils] rpicam-vid failed to start: {exc}")
-            self._running = False
-
-    def _read_frames(self) -> None:
-        """Continuously read MJPEG frames from rpicam-vid stdout."""
-        buf = bytearray()
-        SOI = b"\xff\xd8"  # JPEG Start Of Image
-        EOI = b"\xff\xd9"  # JPEG End Of Image
-
-        while self._running and self._proc and self._proc.poll() is None:
-            chunk = self._proc.stdout.read(4096)
-            if not chunk:
+        # Wait for camera server to start producing frames
+        print("[camera_utils] Waiting for camera_server frames...")
+        for i in range(100):  # 10 seconds max
+            if os.path.exists(SHARED_FRAME_PATH) and os.path.getsize(SHARED_FRAME_PATH) > 0:
+                self._running = True
+                print("[camera_utils] Connected to shared camera.")
                 break
-            buf.extend(chunk)
-
-            # Extract complete JPEG frames
-            while True:
-                soi_pos = buf.find(SOI)
-                if soi_pos == -1:
-                    break
-                eoi_pos = buf.find(EOI, soi_pos + 2)
-                if eoi_pos == -1:
-                    break
-
-                # Extract the JPEG frame
-                jpeg_data = bytes(buf[soi_pos : eoi_pos + 2])
-                buf = buf[eoi_pos + 2 :]
-
-                # Decode to numpy array
-                arr = np.frombuffer(jpeg_data, dtype=np.uint8)
-                frame = cv2.imdecode(arr, cv2.IMREAD_COLOR)
-                if frame is not None:
-                    with self._lock:
-                        self._frame = frame
+            time.sleep(0.1)
+        else:
+            print("[camera_utils] Timeout waiting for camera_server frames.")
 
     def isOpened(self) -> bool:
-        return self._running and self._proc is not None and self._proc.poll() is None
+        return self._running and _camera_server_running()
 
     def read(self) -> Tuple[bool, Optional[np.ndarray]]:
-        with self._lock:
-            if self._frame is not None:
-                return True, self._frame.copy()
+        try:
+            frame = cv2.imread(SHARED_FRAME_PATH)
+            if frame is not None and frame.size > 0:
+                return True, frame
+        except Exception:
+            pass
         return False, None
 
+    def get(self, prop: int) -> float:
+        if prop == cv2.CAP_PROP_FRAME_WIDTH:
+            return float(self._width)
+        elif prop == cv2.CAP_PROP_FRAME_HEIGHT:
+            return float(self._height)
+        return 0.0
+
     def set(self, prop: int, val: float) -> bool:
-        # No-op — resolution is set at init via rpicam-vid args
         return True
 
     def release(self) -> None:
         self._running = False
-        if self._proc:
-            try:
-                self._proc.terminate()
-                self._proc.wait(timeout=3)
-            except Exception:
-                try:
-                    self._proc.kill()
-                except Exception:
-                    pass
-            self._proc = None
 
 
 def open_camera(
@@ -164,25 +96,17 @@ def open_camera(
     """
     Open a camera, auto-selecting the best backend.
 
-    On Raspberry Pi with rpicam-vid available:
-        Uses PiCameraCapture (rpicam-vid subprocess).
-    On desktop / other:
-        Uses cv2.VideoCapture with the given index.
-
-    Returns an object with .isOpened(), .read(), .release(), .set() methods,
-    compatible with cv2.VideoCapture interface.
+    On Raspberry Pi: reads from shared frame file (/dev/shm/).
+    On desktop: uses cv2.VideoCapture.
     Returns None if no camera could be opened.
     """
-    # Try rpicam-vid on Raspberry Pi
-    if _is_raspberry_pi() and _rpicam_available():
-        print(f"[camera_utils] Using rpicam-vid (width={width}, height={height}, fps={fps})")
-        cap = PiCameraCapture(width=width, height=height, fps=fps)
+    if _is_raspberry_pi() and _camera_server_running():
+        cap = SharedFrameReader(width=width, height=height)
         if cap.isOpened():
             return cap
         cap.release()
-        print("[camera_utils] rpicam-vid failed, falling back to OpenCV")
 
-    # Fall back to OpenCV VideoCapture
+    # Fall back to OpenCV
     for idx in dict.fromkeys([index, 0, 1, 2]):
         cap = cv2.VideoCapture(idx)
         if cap.isOpened():
@@ -191,7 +115,7 @@ def open_camera(
             cap.set(cv2.CAP_PROP_FPS, fps)
             ret, frame = cap.read()
             if ret and frame is not None and frame.size > 0:
-                print(f"[camera_utils] Using OpenCV VideoCapture index={idx}")
+                print(f"[camera_utils] Using OpenCV index={idx}")
                 return cap
         cap.release()
 

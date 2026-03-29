@@ -247,7 +247,7 @@ class AutomatedFaceRecognitionSystem:
         from camera_utils import open_camera as _shared_open_camera
         cap = _shared_open_camera(index=camera_index, width=camera_w, height=camera_h, fps=camera_fps)
         
-        if not cap.isOpened():
+        if cap is None or not cap.isOpened():
             print("✗ Could not open camera")
             return
         

@@ -69,7 +69,15 @@ $(echo -e "${ENV_LINES}")
 
 # Main process
 ExecStartPre=-${PYTHON_BIN} ${PROJECT_DIR}/deploy/verify_pins.py
+
+# Start shared camera server (Pi only — writes frames to /dev/shm/)
+ExecStartPre=/bin/bash -c '${PYTHON_BIN} ${PROJECT_DIR}/camera_server.py &'
+ExecStartPre=/bin/bash -c 'for i in \$(seq 1 30); do [ -f /dev/shm/smartvision_frame.jpg ] && exit 0; sleep 0.5; done; echo "[WARN] camera_server did not produce frames in time"'
+
 ExecStart=${PYTHON_BIN} ${PROJECT_DIR}/main.py --module coordinated --target cm4 --components ${COMPONENTS}
+
+# Clean up camera server on stop
+ExecStopPost=/bin/bash -c 'if [ -f /dev/shm/smartvision_camera.pid ]; then kill \$(cat /dev/shm/smartvision_camera.pid) 2>/dev/null; rm -f /dev/shm/smartvision_camera.pid /dev/shm/smartvision_frame.jpg; fi'
 
 # Restart policy — always restart, with escalating backoff
 Restart=always
