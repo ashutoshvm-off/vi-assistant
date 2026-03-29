@@ -16,6 +16,16 @@ from typing import Optional, Tuple
 import cv2
 import numpy as np
 
+# ── Headless display patching ─────────────────────────────────────────────────
+# On headless Pi (no DISPLAY), monkey-patch cv2.imshow/waitKey/destroyAllWindows
+# so modules that call them don't crash.
+if not os.environ.get("DISPLAY") and os.path.exists("/proc/device-tree/model"):
+    cv2.imshow = lambda *a, **kw: None  # type: ignore[assignment]
+    cv2.destroyAllWindows = lambda *a, **kw: None  # type: ignore[assignment]
+    _orig_waitKey = getattr(cv2, "waitKey", None)
+    cv2.waitKey = lambda delay=0: -1  # type: ignore[assignment]
+    print("[camera_utils] Headless mode — cv2.imshow/waitKey patched.")
+
 SHARED_FRAME_PATH = "/dev/shm/smartvision_frame.jpg"
 PID_FILE = "/dev/shm/smartvision_camera.pid"
 
