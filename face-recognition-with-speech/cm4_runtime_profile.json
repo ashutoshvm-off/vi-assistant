@@ -1,0 +1,45 @@
+{
+  "target": "desktop",
+  "detected_cameras": [
+    0
+  ],
+  "pins": {
+    "vl53l0x": {
+      "sda": 2,
+      "scl": 3
+    },
+    "inmp441": {
+      "sd": 20,
+      "sck": 18,
+      "ws": 19,
+      "lr": "GND"
+    },
+    "arducam": {
+      "type": "CSI",
+      "camera_id": 0
+    }
+  },
+  "face_camera_index": 0,
+  "voice_camera_index": 0,
+  "currency_camera_index": 0,
+  "face_camera_width": 640,
+  "face_camera_height": 480,
+  "face_camera_fps": 30,
+  "voice_camera_width": 640,
+  "voice_camera_height": 480,
+  "voice_camera_fps": 30,
+  "object_camera_index": 0,
+  "object_camera_width": 640,
+  "object_camera_height": 480,
+  "object_camera_fps": 30,
+  "object_lidar_type": "auto",
+  "object_lidar_port": "/dev/ttyS0",
+  "object_lidar_baud": 115200,
+  "object_lidar_sda": 2,
+  "object_lidar_scl": 3,
+  "object_detector_backend": "tflite",
+  "mic_sd": 20,
+  "mic_sck": 18,
+  "mic_ws": 19,
+  "mic_lr": "GND"
+}

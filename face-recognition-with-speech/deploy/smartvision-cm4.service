@@ -1,0 +1,39 @@
+[Unit]
+Description=Smart Vision Assistance System (CM4 — 24/7)
+After=network-online.target
+Wants=network-online.target
+StartLimitIntervalSec=300
+StartLimitBurst=5
+
+[Service]
+Type=simple
+User=pi
+WorkingDirectory=/home/pi/smartvision
+
+# Environment
+Environment=PYTHONUNBUFFERED=1
+Environment=OCR_SPACE_API_KEY=helloworld
+
+# Pre-start hardware check
+ExecStartPre=/home/pi/smartvision/.venv/bin/python3 /home/pi/smartvision/deploy/verify_pins.py
+
+# Main process — coordinated mode with all modules
+ExecStart=/home/pi/smartvision/.venv/bin/python3 /home/pi/smartvision/main.py --module coordinated --target cm4 --components face voice currency object
+
+# Restart policy — always come back after crash or exit
+Restart=always
+RestartSec=5
+
+# Watchdog — restart if unresponsive for 120s
+WatchdogSec=120
+
+# Graceful shutdown
+KillSignal=SIGINT
+TimeoutStopSec=30
+
+# Logging
+StandardOutput=append:/var/log/smartvision.log
+StandardError=append:/var/log/smartvision.log
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,11 @@
+person
+bicycle
+motorcycle
+car
+bus
+truck
+train
+chair
+sofa
+pottedplant
+diningtable

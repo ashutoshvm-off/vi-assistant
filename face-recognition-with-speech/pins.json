@@ -1,0 +1,16 @@
+{
+  "vl53l0x": {
+    "sda": 2,
+    "scl": 3
+  },
+  "inmp441": {
+    "sd": 20,
+    "sck": 18,
+    "ws": 19,
+    "lr": "GND"
+  },
+  "arducam": {
+    "type": "CSI",
+    "camera_id": 0
+  }
+}

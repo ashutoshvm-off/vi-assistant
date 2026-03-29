@@ -1,0 +1,51 @@
+{
+  "model_name": "indian_currency_model",
+  "version": "2.0",
+  "framework": "TensorFlow Lite",
+  "architecture": "MobileNetV3-Small + custom head",
+  "input": {
+    "shape": [
+      1,
+      224,
+      224,
+      3
+    ],
+    "dtype": "float32",
+    "color_format": "RGB",
+    "normalization": "ImageNet",
+    "mean": [
+      0.485,
+      0.456,
+      0.406
+    ],
+    "std": [
+      0.229,
+      0.224,
+      0.225
+    ]
+  },
+  "output": {
+    "shape": [
+      1,
+      6
+    ],
+    "dtype": "float32",
+    "activation": "softmax"
+  },
+  "num_classes": 6,
+  "classes": {
+    "0": "INR_10",
+    "1": "INR_100",
+    "2": "INR_20",
+    "3": "INR_200",
+    "4": "INR_50",
+    "5": "INR_500"
+  },
+  "model_file": "currency_model.tflite",
+  "model_size_mb": 1.24,
+  "quantization": "dynamic_range",
+  "inference_settings": {
+    "num_threads": 4,
+    "use_xnnpack": true
+  }
+}

@@ -1,0 +1,9 @@
+opencv-python>=4.8.0
+numpy>=1.24.0
+pyttsx3>=2.90
+adafruit-blinka>=8.40.0
+adafruit-circuitpython-vl53l0x>=3.6.8
+pyserial>=3.5
+
+# Optional for custom high-accuracy detector training
+# ultralytics>=8.2.0

@@ -1,0 +1,134 @@
+
+================================================================================
+                   TensorFlow Lite Conversion Report
+================================================================================
+
+Model Information:
+  - Original Framework: Keras
+  - Target Framework: TensorFlow Lite
+  - Model Name: currency_model
+  - Version: 1.0
+
+Input/Output:
+  - Input Shape: [224, 224, 3]
+  - Input Type: float32
+  - Output Type: float32
+  - Number of Classes: 85
+
+Model Size:
+  - TFLite Model: 1.70 MB
+  - Quantization: dynamic
+
+Classes:
+  - 0: USD_1
+  - 1: USD_5
+  - 2: USD_10
+  - 3: USD_20
+  - 4: USD_50
+  - 5: USD_100
+  - 6: CAD_5
+  - 7: CAD_10
+  - 8: CAD_20
+  - 9: CAD_50
+  - 10: CAD_100
+  - 11: MXN_100
+  - 12: MXN_500
+  - 13: MXN_1000
+  - 14: BRL_10
+  - 15: BRL_50
+  - 16: BRL_100
+  - 17: EUR_5
+  - 18: EUR_10
+  - 19: EUR_20
+  - 20: EUR_50
+  - 21: EUR_100
+  - 22: GBP_5
+  - 23: GBP_10
+  - 24: GBP_20
+  - 25: GBP_50
+  - 26: CHF_10
+  - 27: CHF_20
+  - 28: CHF_50
+  - 29: CHF_100
+  - 30: SEK_20
+  - 31: SEK_50
+  - 32: SEK_100
+  - 33: SEK_500
+  - 34: NOK_50
+  - 35: NOK_100
+  - 36: NOK_500
+  - 37: RUB_100
+  - 38: RUB_500
+  - 39: RUB_1000
+  - 40: PLN_10
+  - 41: PLN_50
+  - 42: PLN_100
+  - 43: JPY_1000
+  - 44: JPY_5000
+  - 45: JPY_10000
+  - 46: CNY_10
+  - 47: CNY_20
+  - 48: CNY_50
+  - 49: CNY_100
+  - 50: INR_10
+  - 51: INR_20
+  - 52: INR_50
+  - 53: INR_100
+  - 54: INR_200
+  - 55: INR_500
+  - 56: AUD_5
+  - 57: AUD_10
+  - 58: AUD_20
+  - 59: AUD_50
+  - 60: AUD_100
+  - 61: NZD_20
+  - 62: NZD_50
+  - 63: NZD_100
+  - 64: SGD_10
+  - 65: SGD_50
+  - 66: SGD_100
+  - 67: HKD_20
+  - 68: HKD_50
+  - 69: HKD_100
+  - 70: KRW_1000
+  - 71: KRW_5000
+  - 72: KRW_10000
+  - 73: THB_20
+  - 74: THB_100
+  - 75: THB_500
+  - 76: SAR_10
+  - 77: SAR_50
+  - 78: SAR_100
+  - 79: AED_20
+  - 80: AED_50
+  - 81: AED_100
+  - 82: ZAR_50
+  - 83: ZAR_100
+  - 84: ZAR_200
+
+Preprocessing:
+  - Image Size: 224
+  - Color Format: RGB
+  - Normalization: ImageNet (0.485, 0.456, 0.406) / (0.229, 0.224, 0.225)
+
+Inference Configuration:
+  - Number of Threads: 4
+  - XNNPACK Backend: True
+  - FP16 Support: False
+
+Files Generated:
+  - Model: currency_model.tflite
+  - Model Info: model_info.json
+  - Class Mapping: class_mapping.json
+
+Deployment Instructions:
+  1. Copy currency_model.tflite to Raspberry Pi: models/ directory
+  2. Copy model_info.json and class_mapping.json
+  3. Run: python src/inference.py
+
+Performance Expectations (Raspberry Pi 4):
+  - Estimated Inference Time: 50-150 ms per frame
+  - Expected FPS: 6-20 FPS
+  - Memory Usage: ~50-100 MB
+
+================================================================================
